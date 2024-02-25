@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-module fir_filter(
+module goldenmodel_fir_filter(
     input wire sampling_rate;
     input wire reset;
     input wire [15:0] data_in;
