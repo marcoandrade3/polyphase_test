@@ -2,67 +2,51 @@
 `default_nettype none
 
 module goldenmodel_fir_filter(
-    input wire sampling_rate;
-    input wire reset;
-    input wire [15:0] data_in;
-    input wire valid_in;
-    output wire [15:0] data_out;
-    output wire valid_out;
+    input wire clk,
+    input wire reset,
+    input wire [15:0] data_in,
+    input wire valid_in,
+    output reg [15:0] data_out,
+    output reg valid_out
 );
-    
-    parameter N = 16; // Size of input signal
-    parameter M = 31; // Size of filter
 
-    // defines coefficient
-    reg signed [15:0] FIR_Coefficients[1:2][31:0] = {
-    { 16'sd 5, 16'sd 0, 16'sd -17, 16'sd 0, 16'sd 44, 16'sd 0, 16'sd -96, 16'sd 0,
-      16'sd 187, 16'sd 0, 16'sd -335, 16'sd 0, 16'sd 565, 16'sd 0, 16'sd -906,
-      16'sd 0, 16'sd 1401, 16'sd 0, 16'sd -2112, 16'sd 0, 16'sd 3145, 16'sd 0,
-      16'sd -4723, 16'sd 0, 16'sd 7415, 16'sd 0, 16'sd -13331, 16'sd 0, 16'sd 41526 },
-    { 16'sd 5, 16'sd 0, 16'sd -17, 16'sd 0, 16'sd 44, 16'sd 0, 16'sd -96, 16'sd 0,
-      16'sd 187, 16'sd 0, 16'sd -335, 16'sd 0, 16'sd 565, 16'sd 0, 16'sd -906,
-      16'sd 0, 16'sd 1401, 16'sd 0, 16'sd -2112, 16'sd 0, 16'sd 3145, 16'sd 0,
-      16'sd -4723, 16'sd 0, 16'sd 7415, 16'sd 0, 16'sd -13331, 16'sd 0, 16'sd 41526 }
-    };
+parameter N = 16; // Filter order + 1, assuming typo in original description
+parameter M = 31; // Number of coefficients
 
-    parameter signed [15:0] Center_Tap = 16'sd 65536;
+// Coefficients definition corrected to a 1D array for simplicity in this example
+reg signed [15:0] FIR_Coefficients[0:M-1] = {
+    16'sd 5, 16'sd 0, 16'sd -17, 16'sd 0, 16'sd 44, 16'sd 0, 16'sd -96, 16'sd 0,
+    16'sd 187, 16'sd 0, 16'sd -335, 16'sd 0, 16'sd 565, 16'sd 0, 16'sd -906,
+    16'sd 0, 16'sd 1401, 16'sd 0, 16'sd -2112, 16'sd 0, 16'sd 3145, 16'sd 0,
+    16'sd -4723, 16'sd 0, 16'sd 7415, 16'sd 0, 16'sd -13331, 16'sd 0, 16'sd 41526,
+    16'sd 0, 16'sd 65536 // Assuming the Center_Tap is the last coefficient
+};
 
-    // Local variables
-    logic [15:0] temp[N+M-1];
-    integer i, j;
+// Input sample buffer
+reg signed [15:0] sample_buffer[M-1:0];
+integer i;
 
-    // Initialize temporary variable
-    initial begin
-        for (i = 0; i < N+M-1; i = i + 1) begin
-            temp[i] = 16'b0; // Initialize to zero
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        for (i = 0; i < M; i = i + 1) begin
+            sample_buffer[i] <= 0;
         end
-    end
-
-    // Convolution computation
-    always_comb begin
-        for (i = 0; i < N; i = i + 1) begin
-            for (j = 0; j < M; j = j + 1) begin
-                temp[i+j] = temp[i+j] + data_in[i] * FIR_Coefficients[j];
-            end
+        data_out <= 0;
+        valid_out <= 0;
+    end else if (valid_in) begin
+        // Shift the buffer and insert new sample
+        for (i = M-1; i > 0; i = i - 1) begin
+            sample_buffer[i] <= sample_buffer[i-1];
         end
-    end
+        sample_buffer[0] <= data_in;
 
-    // Assign convolution result to output signal
-    always_ff @(posedge clk or posedge rst) begin
-        if (reset) begin
-            for (i = 0; i < N+M-1; i = i + 1) begin
-                data_out[i] <= 16'b0; // Reset to zero on reset
-            end
-        end else begin
-            for (i = 0; i < N+M-1; i = i + 1) begin
-                data_out[i] <= temp[i];
-            end
-            if $size(data_out) == 16 begin 
-                valid_out <= 1;
-            end 
+        // Perform FIR filtering
+        data_out <= 0; // Reset output for accumulation
+        for (i = 0; i < M; i = i + 1) begin
+            data_out <= data_out + sample_buffer[i] * FIR_Coefficients[i];
         end
+        valid_out <= 1; // Output is valid after processing
     end
+end
 
 endmodule
-
-`default_nettype wire
