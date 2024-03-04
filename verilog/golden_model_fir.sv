@@ -10,10 +10,9 @@ module goldenmodel_fir_filter(
     output reg valid_out
 );
 
-parameter N = 16; // Filter order + 1, assuming typo in original description
-parameter M = 31; // Number of coefficients
+parameter N = 16; 
+parameter M = 31; 
 
-// Coefficients definition corrected to a 1D array for simplicity in this example
 reg signed [15:0] FIR_Coefficients[0:M-1] = {
     16'sd 5, 16'sd 0, 16'sd -17, 16'sd 0, 16'sd 44, 16'sd 0, 16'sd -96, 16'sd 0,
     16'sd 187, 16'sd 0, 16'sd -335, 16'sd 0, 16'sd 565, 16'sd 0, 16'sd -906,
@@ -22,7 +21,6 @@ reg signed [15:0] FIR_Coefficients[0:M-1] = {
     16'sd 0, 16'sd 65536 // Assuming the Center_Tap is the last coefficient
 };
 
-// Input sample buffer
 reg signed [15:0] sample_buffer[M-1:0];
 integer i;
 

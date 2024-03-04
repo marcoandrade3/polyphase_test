@@ -1,18 +1,15 @@
-`timescale 1ns / 1ps // Define simulation time units and resolution
+`timescale 1ns / 1ps 
 module golden_model_tb;
 
-    parameter N = 16; // Size of input signal
-    parameter N_f = 16; // Number of frequencies
+    parameter N = 16; 
+    parameter N_f = 16; 
 
-    // Correction: Define frequencies as an array with correct dimensions
     signed [15:0] frequencies[N_f-1:0]; 
-    signed [15:0] input_vector[N-1:0]; // Correct dimensions
+    signed [15:0] input_vector[N-1:0]; 
 
-    // Correctly define expected_out and received arrays
     signed [15:0] expected_out[N-1:0];
     signed [15:0] received[N-1:0]; 
 
-    // Declaration of clk_in, reset, data_in, valid_in, and other signals needed for the DUT interface
     reg clk_in = 0;
     reg reset;
     reg [15:0] data_in;
@@ -20,9 +17,8 @@ module golden_model_tb;
     wire [15:0] data_out;
     wire valid_out;
 
-    integer i, f, n = 0; // Declare loop variables and n for indexing input_vector
+    integer i, f, n = 0; 
 
-    // Instantiate the Device Under Test (DUT)
     goldenmodel_fir_filter DUT (
         .clk(clk_in),
         .reset(reset),
@@ -32,21 +28,19 @@ module golden_model_tb;
         .valid_out(valid_out)
     );
 
-    // Clock generation
     always begin
-        #5 clk_in = !clk_in; // 100 MHz clock
+        #5 clk_in = !clk_in;
     end
 
     initial begin
-        reset <= 1; // Assert reset
-        #100; // Wait 100ns for global reset
-        reset <= 0; // Deassert reset
-        valid_in <= 0; // Ensure valid_in is initially low
+        reset <= 1; 
+        #100; 
+        reset <= 0; 
+        valid_in <= 0; 
 
-        // Initialize frequencies and input_vector
         for (i = 0; i < N; i = i + 1) begin
-            input_vector[i] = 0; // Initialize input_vector
-            expected_out[i] = 0; // Initialize expected_out
+            input_vector[i] = 0; 
+            expected_out[i] = 0; 
         end
 
         for (i = 0; i < N; i = i + 1) begin 
@@ -58,26 +52,23 @@ module golden_model_tb;
             end
         end
 
-        // Simulation of input signals
         for (n = 0; n < N; n = n + 1) begin 
-            @(posedge clk_in); // Wait for the next clock edge
-            valid_in <= 1; // Signal that valid data is being sent
-            data_in <= input_vector[n]; // Send the next value
-            #10; // Wait for a bit before changing valid_in back
-            valid_in <= 0; // Ensure only one valid data per cycle
+            @(posedge clk_in); 
+            valid_in <= 1;
+            data_in <= input_vector[n]; 
+            #10; 
+            valid_in <= 0;
         end
     end  
     
-    // Capture output data
     always @(posedge clk_in) begin 
         if (valid_out) begin 
-            received[n] <= data_out; // Store received data
+            received[n] <= data_out; 
         end 
     end
 
-    #1000; // Adjust delay as needed to ensure all inputs are processed
+    #1000; 
 
-    // Compare received and expected outputs
     integer mismatches = 0;
     for (i = 0; i < N; i = i + 1) begin
         if (abs(received[i] - expected_out[i]) > THRESHOLD) begin
@@ -92,9 +83,8 @@ module golden_model_tb;
         $display("Detected %d mismatches.", mismatches);
     end
 
-    $finish; // End simulation
+    $finish;
 
-// Function to calculate absolute value
 function automatic int abs;
     input int value;
     begin
