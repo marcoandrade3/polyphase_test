@@ -66,6 +66,8 @@ module golden_model_tb;
             received[n] <= data_out; 
         end 
     end
+// modify to generate a waveform to show that it's working 
+// generate frequenices near the transition band 
 
     #1000; 
 
