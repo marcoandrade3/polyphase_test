@@ -30,7 +30,6 @@ module multiply_accumulator #(
         end else if (valid_in) begin
             case (state)
                 IDLE: begin
-                    data_out <= 0;
                     valid_out <= 0;
                     state <= FIRST_ADDER;
                 end

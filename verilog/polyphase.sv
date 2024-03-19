@@ -29,7 +29,7 @@ module polyphase_halfband_fir #(
         .signal_2(multiply_accumulator_signal_2),
         .signal_3(multiply_accumulator_signal_3),
         .signal_4(multiply_accumulator_signal_4),
-        .valid_out(valid_out),
+        .valid_out(valid_out_mul),
         .data_out(multiply_accumulator_signal_out)
     );
 
@@ -41,37 +41,56 @@ module polyphase_halfband_fir #(
     logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_3;
     logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_4;
     logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_out;
+    logic [SAMPLE_WIDTH-1:0] last_input_out;
+    logic valid_out_mul;
 
     // out[0] = h[0] * in[0] + h[2] * x[-2] + h[4] * x[-4] + h[6] * x[-6] + h[8] * x[-8] + h[10] * x[-10] + h[12] * x[-12] + h[14] * x[-14] + h[16] * x[-16] + h[18] * x[-18] + h[20] * x[-20] + h[22] * x[-22] + h[24] * x[-24] + h[26] * x[-26] + h[28] * x[-28] + h[30] * x[-30] + h[32] * x[-32] + h[34] * x[-34] + h[36] * x[-36] + h[38] * x[-38] + h[40] * x[-40] + h[42] * x[-42] + h[44] * x[-44] + h[46] * x[-46] + h[48] * x[-48] + h[50] * x[-50] + h[52] * x[-52] + h[54] * x[-54] + h[56] * x[-56]    
     // out[1] = h[0] * in[2] + h[2] * x[0] + h[4] * x[-2] + h[6] * x[-4] + h[8] * x[-6] + h[10] * x[-8] + h[12] * x[-10] + h[14] * x[-12] + h[16] * x[-14] + h[18] * x[-16] + h[20] * x[-18] + h[22] * x[-20] + h[24] * x[-22] + h[26] * x[-24] + h[28] * x[-26] + h[30] * x[-28] + h[32] * x[-30] + h[34] * x[-32] + h[36] * x[-34] + h[38] * x[-36] + h[40] * x[-38] + h[42] * x[-40] + h[44] * x[-42] + h[46] * x[-44] + h[48] * x[-46] + h[50] * x[-48] + h[52] * x[-50] + h[54] * x[-52] + h[56] * x[-54] + h[58] * x[-56]
     // out[2] = h[0] * in[4] + h[2] * x[2] + h[4] * x[0] + h[6] * x[-2] + h[8] * x[-4] + h[10] * x[-6] + h[12] * x[-8] + h[14] * x[-10] + h[16] * x[-12] + h[18] * x[-14] + h[20] * x[-16] + h[22] * x[-18] + h[24] * x[-20] + h[26] * x[-22] + h[28] * x[-24] + h[30] * x[-26] + h[32] * x[-28] + h[34] * x[-30] + h[36] * x[-32] + h[38] * x[-34] + h[40] * x[-36] + h[42] * x[-38] + h[44] * x[-40] + h[46] * x[-42] + h[48] * x[-44] + h[50] * x[-46] + h[52] * x[-48] + h[54] * x[-50] + h[56] * x[-52] + h[58] * x[-54] + h[60] * x[-56]
 
     // using multiply accumulator, calculates each of these. 
+
+    
+    enum {IDLE, MULTIPLY_ACCUMULATE, HANDLE_RESULTS} state;
     always @(posedge clk or posedge reset) begin
         if (reset) begin
-            phase_counter <= 0;
             data_out <= 0;
             valid_out <= 0;
+            state <= IDLE;
+            sample_count <= 0;  
         end else if (valid_in) begin
-            for (i = N-1; i > 0; i = i - 1) begin
-                sample_buffer[i] <= sample_buffer[i-1];
-            end
-            sample_buffer[0] <= data_in;
-
-            multiply_accumulator_signal_1 <= data_in; 
-            multiply_accumulator_signal_3 <= FIR_Coefficients[sample_count];
-            multiply_accumulator_signal_4 <= multiply_accumulator_signal_out;
-
-            if (sample_count == TAPS) begin
-                data_out <= multiply_accumulator_signal_out;
-                multiply_accumulator_signal_1 <= 0;
-                multiply_accumulator_signal_3 <= 0;
-                multiply_accumulator_signal_4 <= 0;
-                sample_count <= 0;
-                valid_out <= 1;
-            end else begin 
-                sample_count <= sample_count + 1;
-            end
+            case (state)
+                IDLE: begin 
+                    // we only want odd ones
+                    if (sample_count % 2 == 1) begin 
+                        for (i = N-1; i > 0; i = i - 1) begin
+                            sample_buffer[i] <= sample_buffer[i-1];
+                        end
+                        sample_buffer[0] <= data_in;
+                        multiply_accumulator_signal_1 <= data_in; 
+                        multiply_accumulator_signal_3 <= FIR_Coefficients[sample_count];
+                        multiply_accumulator_signal_4 <= last_input_out;
+                        state <= MULTIPLY_ACCUMULATE;
+                    end 
+                    sample_count <= sample_count + 1;
+                end
+                MULTIPLY_ACCUMULATE: begin 
+                    if (valid_out_mul) begin 
+                        state <= HANDLE_RESULTS;
+                    end 
+                end 
+                HANDLE_RESULTS: begin 
+                    state <= IDLE;
+                    if (sample_count == TAPS) begin
+                        data_out <= multiply_accumulator_signal_out;
+                        last_input_out <= multiply_accumulator_signal_out - sample_buffer[N-1] * FIR_Coefficients[0];
+                        sample_count <= sample_count - 1;
+                        valid_out <= 1;
+                    end else begin 
+                        last_input_out <= multiply_accumulator_signal_out;
+                    end
+                end
+            endcase 
         end
     end 
 
