@@ -58,8 +58,16 @@ module polyphase_halfband_fir #(
             end
             sample_buffer[0] <= data_in;
 
+            multiply_accumulator_signal_1 <= data_in; 
+            multiply_accumulator_signal_3 <= FIR_Coefficients[sample_count];
+            multiply_accumulator_signal_4 <= multiply_accumulator_signal_out;
+
             if (sample_count == TAPS) begin
-                data_out <= FIR_Coefficients[0] * sample_buffer[0] + FIR_Coefficients[2] * sample_buffer[2] + FIR_Coefficients[4] * sample_buffer[4] + FIR_Coefficients[6] * sample_buffer[6] + FIR_Coefficients[8] * sample_buffer[8] + FIR_Coefficients[10] * sample_buffer[10] + FIR_Coefficients[12] * sample_buffer[12] + FIR_Coefficients[14] * sample_buffer[14] + FIR_Coefficients[16] * sample_buffer[16] + FIR_Coefficients[18] * sample_buffer[18] + FIR_Coefficients[20] * sample_buffer[20] + FIR_Coefficients[22] * sample_buffer[22] + FIR_Coefficients[24] * sample_buffer[24] + FIR_Coefficients[26] * sample_buffer[26] + FIR_Coefficients[28] * sample_buffer[28] + FIR_Coefficients[30] * sample_buffer[30] + FIR_Coefficients[32] * sample_buffer[32] + FIR_Coefficients[34] * sample_buffer[34] + FIR_Coefficients[36] * sample_buffer[36] + FIR_Coefficients[38] * sample_buffer[38] + FIR_Coefficients[40] * sample_buffer[40] + FIR_Coefficients[42] * sample_buffer[42] + FIR_Coefficients[44] * sample_buffer[44] + FIR_Coefficients[46] * sample_buffer[46] + FIR_Coefficients[48] * sample_buffer[48] + FIR_Coefficients[50] * sample_buffer[50] + FIR_Coefficients[52] * sample_buffer[52] + FIR_Coefficients[54] * sample_buffer[54] + FIR_Coefficients[56] * sample_buffer[56]; 
+                data_out <= multiply_accumulator_signal_out;
+                multiply_accumulator_signal_1 <= 0;
+                multiply_accumulator_signal_3 <= 0;
+                multiply_accumulator_signal_4 <= 0;
+                sample_count <= 0;
                 valid_out <= 1;
             end else begin 
                 sample_count <= sample_count + 1;
