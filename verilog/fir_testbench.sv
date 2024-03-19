@@ -4,11 +4,11 @@ module golden_model_tb;
     parameter N = 16; 
     parameter N_f = 16; 
 
-    signed [15:0] frequencies[N_f-1:0]; 
-    signed [15:0] input_vector[N-1:0]; 
+    logic signed [15:0] frequencies[N_f-1:0]; 
+    logic signed [15:0] input_vector[N-1:0]; 
 
-    signed [15:0] expected_out[N-1:0];
-    signed [15:0] received[N-1:0]; 
+    logic signed [15:0] expected_out[N-1:0];
+    logic signed [15:0] received[N-1:0]; 
 
     reg clk_in = 0;
     reg reset;
@@ -66,12 +66,11 @@ module golden_model_tb;
             received[n] <= data_out; 
         end 
     end
-// modify to generate a waveform to show that it's working 
-// generate frequenices near the transition band 
-
-    #1000; 
+    // modify to generate a waveform to show that it's working 
+    // generate frequenices near the transition band 
 
     integer mismatches = 0;
+    #1000; 
     for (i = 0; i < N; i = i + 1) begin
         if (abs(received[i] - expected_out[i]) > THRESHOLD) begin
             $display("Mismatch at index %d: Expected %d, Received %d", i, expected_out[i], received[i]);
@@ -95,6 +94,7 @@ function automatic int abs;
         else
             abs = value;
     end
+
 endfunction
 
 endmodule
