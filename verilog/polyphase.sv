@@ -44,12 +44,6 @@ module polyphase_halfband_fir #(
     logic [SAMPLE_WIDTH-1:0] last_input_out;
     logic valid_out_mul;
 
-    // out[0] = h[0] * in[0] + h[2] * x[-2] + h[4] * x[-4] + h[6] * x[-6] + h[8] * x[-8] + h[10] * x[-10] + h[12] * x[-12] + h[14] * x[-14] + h[16] * x[-16] + h[18] * x[-18] + h[20] * x[-20] + h[22] * x[-22] + h[24] * x[-24] + h[26] * x[-26] + h[28] * x[-28] + h[30] * x[-30] + h[32] * x[-32] + h[34] * x[-34] + h[36] * x[-36] + h[38] * x[-38] + h[40] * x[-40] + h[42] * x[-42] + h[44] * x[-44] + h[46] * x[-46] + h[48] * x[-48] + h[50] * x[-50] + h[52] * x[-52] + h[54] * x[-54] + h[56] * x[-56]    
-    // out[1] = h[0] * in[2] + h[2] * x[0] + h[4] * x[-2] + h[6] * x[-4] + h[8] * x[-6] + h[10] * x[-8] + h[12] * x[-10] + h[14] * x[-12] + h[16] * x[-14] + h[18] * x[-16] + h[20] * x[-18] + h[22] * x[-20] + h[24] * x[-22] + h[26] * x[-24] + h[28] * x[-26] + h[30] * x[-28] + h[32] * x[-30] + h[34] * x[-32] + h[36] * x[-34] + h[38] * x[-36] + h[40] * x[-38] + h[42] * x[-40] + h[44] * x[-42] + h[46] * x[-44] + h[48] * x[-46] + h[50] * x[-48] + h[52] * x[-50] + h[54] * x[-52] + h[56] * x[-54] + h[58] * x[-56]
-    // out[2] = h[0] * in[4] + h[2] * x[2] + h[4] * x[0] + h[6] * x[-2] + h[8] * x[-4] + h[10] * x[-6] + h[12] * x[-8] + h[14] * x[-10] + h[16] * x[-12] + h[18] * x[-14] + h[20] * x[-16] + h[22] * x[-18] + h[24] * x[-20] + h[26] * x[-22] + h[28] * x[-24] + h[30] * x[-26] + h[32] * x[-28] + h[34] * x[-30] + h[36] * x[-32] + h[38] * x[-34] + h[40] * x[-36] + h[42] * x[-38] + h[44] * x[-40] + h[46] * x[-42] + h[48] * x[-44] + h[50] * x[-46] + h[52] * x[-48] + h[54] * x[-50] + h[56] * x[-52] + h[58] * x[-54] + h[60] * x[-56]
-
-    // using multiply accumulator, calculates each of these. 
-
     
     enum {IDLE, MULTIPLY_ACCUMULATE, HANDLE_RESULTS} state;
     always @(posedge clk or posedge reset) begin
@@ -72,6 +66,8 @@ module polyphase_halfband_fir #(
                         multiply_accumulator_signal_4 <= last_input_out;
                         state <= MULTIPLY_ACCUMULATE;
                     end 
+                    valid_out <= 0;
+                    data_out <= 0;
                     sample_count <= sample_count + 1;
                 end
                 MULTIPLY_ACCUMULATE: begin 
@@ -83,7 +79,7 @@ module polyphase_halfband_fir #(
                     state <= IDLE;
                     if (sample_count == TAPS) begin
                         data_out <= multiply_accumulator_signal_out;
-                        last_input_out <= multiply_accumulator_signal_out - sample_buffer[N-1] * FIR_Coefficients[0];
+                        last_input_out <= 0;
                         sample_count <= sample_count - 1;
                         valid_out <= 1;
                     end else begin 
