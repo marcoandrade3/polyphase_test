@@ -2,9 +2,10 @@
 `default_nettype none
 
 module polyphase_halfband_fir #(
-    parameter integer SAMPLE_WIDTH = 16,  
-    parameter integer N = 31, 
+    parameter integer SAMPLE_WIDTH = 6,  
+    parameter integer N = 128, 
     parameter integer M = 2,
+    parameter integer TAPS = 56,
     parameter signed [15:0] FIR_Coefficients[0:M-1] = {
     16'sd 5, 16'sd 0, 16'sd -17, 16'sd 0, 16'sd 44, 16'sd 0, 16'sd -96, 16'sd 0,
     16'sd 187, 16'sd 0, 16'sd -335, 16'sd 0, 16'sd 565, 16'sd 0, 16'sd -906,
@@ -21,13 +22,48 @@ module polyphase_halfband_fir #(
     output reg[SAMPLE_WIDTH-1:0] data_out
 );    
 
+    multiply_accumulator multiply_accumulator_0 (
+        .clk(clk),
+        .reset(reset),
+        .signal_1(multiply_accumulator_signal_1),
+        .signal_2(multiply_accumulator_signal_2),
+        .signal_3(multiply_accumulator_signal_3),
+        .signal_4(multiply_accumulator_signal_4),
+        .valid_out(valid_out),
+        .data_out(multiply_accumulator_signal_out)
+    );
+
+    reg [SAMPLE_WIDTH-1:0] sample_buffer[N-1:0];
+    reg [SAMPLE_WIDTH-1:0] sample_count;
+
+    logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_1;
+    logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_2;
+    logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_3;
+    logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_4;
+    logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_out;
+
+    // out[0] = h[0] * in[0] + h[2] * x[-2] + h[4] * x[-4] + h[6] * x[-6] + h[8] * x[-8] + h[10] * x[-10] + h[12] * x[-12] + h[14] * x[-14] + h[16] * x[-16] + h[18] * x[-18] + h[20] * x[-20] + h[22] * x[-22] + h[24] * x[-24] + h[26] * x[-26] + h[28] * x[-28] + h[30] * x[-30] + h[32] * x[-32] + h[34] * x[-34] + h[36] * x[-36] + h[38] * x[-38] + h[40] * x[-40] + h[42] * x[-42] + h[44] * x[-44] + h[46] * x[-46] + h[48] * x[-48] + h[50] * x[-50] + h[52] * x[-52] + h[54] * x[-54] + h[56] * x[-56]    
+    // out[1] = h[0] * in[2] + h[2] * x[0] + h[4] * x[-2] + h[6] * x[-4] + h[8] * x[-6] + h[10] * x[-8] + h[12] * x[-10] + h[14] * x[-12] + h[16] * x[-14] + h[18] * x[-16] + h[20] * x[-18] + h[22] * x[-20] + h[24] * x[-22] + h[26] * x[-24] + h[28] * x[-26] + h[30] * x[-28] + h[32] * x[-30] + h[34] * x[-32] + h[36] * x[-34] + h[38] * x[-36] + h[40] * x[-38] + h[42] * x[-40] + h[44] * x[-42] + h[46] * x[-44] + h[48] * x[-46] + h[50] * x[-48] + h[52] * x[-50] + h[54] * x[-52] + h[56] * x[-54] + h[58] * x[-56]
+    // out[2] = h[0] * in[4] + h[2] * x[2] + h[4] * x[0] + h[6] * x[-2] + h[8] * x[-4] + h[10] * x[-6] + h[12] * x[-8] + h[14] * x[-10] + h[16] * x[-12] + h[18] * x[-14] + h[20] * x[-16] + h[22] * x[-18] + h[24] * x[-20] + h[26] * x[-22] + h[28] * x[-24] + h[30] * x[-26] + h[32] * x[-28] + h[34] * x[-30] + h[36] * x[-32] + h[38] * x[-34] + h[40] * x[-36] + h[42] * x[-38] + h[44] * x[-40] + h[46] * x[-42] + h[48] * x[-44] + h[50] * x[-46] + h[52] * x[-48] + h[54] * x[-50] + h[56] * x[-52] + h[58] * x[-54] + h[60] * x[-56]
+
+    // using multiply accumulator, calculates each of these. 
     always @(posedge clk or posedge reset) begin
         if (reset) begin
             phase_counter <= 0;
             data_out <= 0;
             valid_out <= 0;
         end else if (valid_in) begin
-            
+            for (i = N-1; i > 0; i = i - 1) begin
+                sample_buffer[i] <= sample_buffer[i-1];
+            end
+            sample_buffer[0] <= data_in;
+
+            if (sample_count == TAPS) begin
+                data_out <= FIR_Coefficients[0] * sample_buffer[0] + FIR_Coefficients[2] * sample_buffer[2] + FIR_Coefficients[4] * sample_buffer[4] + FIR_Coefficients[6] * sample_buffer[6] + FIR_Coefficients[8] * sample_buffer[8] + FIR_Coefficients[10] * sample_buffer[10] + FIR_Coefficients[12] * sample_buffer[12] + FIR_Coefficients[14] * sample_buffer[14] + FIR_Coefficients[16] * sample_buffer[16] + FIR_Coefficients[18] * sample_buffer[18] + FIR_Coefficients[20] * sample_buffer[20] + FIR_Coefficients[22] * sample_buffer[22] + FIR_Coefficients[24] * sample_buffer[24] + FIR_Coefficients[26] * sample_buffer[26] + FIR_Coefficients[28] * sample_buffer[28] + FIR_Coefficients[30] * sample_buffer[30] + FIR_Coefficients[32] * sample_buffer[32] + FIR_Coefficients[34] * sample_buffer[34] + FIR_Coefficients[36] * sample_buffer[36] + FIR_Coefficients[38] * sample_buffer[38] + FIR_Coefficients[40] * sample_buffer[40] + FIR_Coefficients[42] * sample_buffer[42] + FIR_Coefficients[44] * sample_buffer[44] + FIR_Coefficients[46] * sample_buffer[46] + FIR_Coefficients[48] * sample_buffer[48] + FIR_Coefficients[50] * sample_buffer[50] + FIR_Coefficients[52] * sample_buffer[52] + FIR_Coefficients[54] * sample_buffer[54] + FIR_Coefficients[56] * sample_buffer[56]; 
+                valid_out <= 1;
+            end else begin 
+                sample_count <= sample_count + 1;
+            end
         end
     end 
 
