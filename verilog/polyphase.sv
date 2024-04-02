@@ -17,77 +17,63 @@ module polyphase_halfband_fir #(
     input wire clk,
     input wire reset,
     input wire valid_in,
-    input wire[SAMPLE_WIDTH-1:0] data_in, 
+    input wire [SAMPLE_WIDTH-1:0] data_in, 
     output reg valid_out,
     output reg[SAMPLE_WIDTH-1:0] data_out
 );    
+    input wire [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_1_array[TAPS-1:0];
+    input wire [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_2_array[TAPS-1:0];
+    input wire [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_3_array[TAPS-1:0];
+    input wire [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_4_array[TAPS-1:0];
+    output wire [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_out_array [TAPS-1:0];
 
-    multiply_accumulator multiply_accumulator_0 (
-        .clk(clk),
-        .reset(reset),
-        .signal_1(multiply_accumulator_signal_1),
-        .signal_2(multiply_accumulator_signal_2),
-        .signal_3(multiply_accumulator_signal_3),
-        .signal_4(multiply_accumulator_signal_4),
-        .valid_out(valid_out_mul),
-        .data_out(multiply_accumulator_signal_out)
-    );
+    genvar i 
+    generate
+        for (int i = 0; i < TAPS; i = i + 1) begin
+            multiply_accumulator multiply_accumulator_0 (
+                .clk(clk),
+                .reset(reset),
+                .signal_1(multiply_accumulator_signal_1_array[i]),
+                .signal_2(multiply_accumulator_signal_2_array[i]),
+                .signal_3(multiply_accumulator_signal_3_array[i]),
+                .signal_4(multiply_accumulator_signal_4_array[i]),
+                .valid_out(valid_out_mul),
+                .data_out(multiply_accumulator_signal_out_array[i])
+            );
+        end
+    endgenerate 
 
     reg [SAMPLE_WIDTH-1:0] sample_buffer[N-1:0];
-    reg [SAMPLE_WIDTH-1:0] sample_count;
+    state {waiting, setup, ready} state; 
 
-    logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_1;
-    logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_2;
-    logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_3;
-    logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_4;
-    logic [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_out;
-    logic [SAMPLE_WIDTH-1:0] last_input_out;
-    logic valid_out_mul;
-
-    
-    enum {IDLE, MULTIPLY_ACCUMULATE, HANDLE_RESULTS} state;
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
+    always_ff @(posedge clk) begin
+        if (reset) begin 
             data_out <= 0;
             valid_out <= 0;
-            state <= IDLE;
-            sample_count <= 0;  
+            state <= setup;
         end else if (valid_in) begin
-            case (state)
-                IDLE: begin 
-                    // we only want odd ones
-                    if (sample_count % 2 == 1) begin 
-                        for (i = N-1; i > 0; i = i - 1) begin
-                            sample_buffer[i] <= sample_buffer[i-1];
-                        end
-                        sample_buffer[0] <= data_in;
-                        multiply_accumulator_signal_1 <= data_in; 
-                        multiply_accumulator_signal_3 <= FIR_Coefficients[sample_count];
-                        multiply_accumulator_signal_4 <= last_input_out;
-                        state <= MULTIPLY_ACCUMULATE;
-                    end 
-                    valid_out <= 0;
-                    data_out <= 0;
-                    sample_count <= sample_count + 1;
-                end
-                MULTIPLY_ACCUMULATE: begin 
-                    if (valid_out_mul) begin 
-                        state <= HANDLE_RESULTS;
-                    end 
+            for (i = N-1; i > 0; i = i - 1) begin
+                sample_buffer[i] <= sample_buffer[i-1];
+            end
+            sample_buffer[0] <= data_in;
+            sample_count <= sample_count + 1;
+            if (state == waiting) begin 
+                if (sample_buffer >= TAPS) begin 
+                    state <= setup;
                 end 
-                HANDLE_RESULTS: begin 
-                    state <= IDLE;
-                    if (sample_count == TAPS) begin
-                        data_out <= multiply_accumulator_signal_out;
-                        last_input_out <= 0;
-                        sample_count <= sample_count - 1;
-                        valid_out <= 1;
-                    end else begin 
-                        last_input_out <= multiply_accumulator_signal_out;
-                    end
-                end
-            endcase 
-        end
-    end 
+            end else if (state == setup) begin 
+                multiply_accumulator_signal_1[sample_count] <= sample_buffer[0]; 
+                multiply_accumulator_signal_3[sample_count] <= FIR_Coefficients[sample_count - 1];
+                multiply_accumulator_signal_4[sample_count] <= multiply_accumulator_signal_out_array[sample_count - 2];
+                valid_out <= 0;
+                data_out <= 0;
+            end else if (state == ready) begin
+                data_out <= multiply_accumulator_signal_out_array[TAPS-1];
+                valid_out <= 1;
+                state <= waiting;
+            end
+        end 
+    end
+
 
 endmodule

@@ -15,6 +15,7 @@ module multiply_accumulator #(
     output reg valid_out,
     output reg[SAMPLE_WIDTH-1:0] data_out
 );  
+    // generate, graph with integer and one with fixed point to compare frequency response 
     enum {IDLE, FIRST_ADDER, MULTIPLIER, SECOND_ADDER} state;
     logic [SAMPLE_WIDTH-1:0] first_result; 
     logic [SAMPLE_WIDTH-1:0] second_result;
