@@ -14,37 +14,50 @@ module polyphase_halfband_fir #(
     16'sd 0, 16'sd 65536
     };
 )(
-    input wire clk,
-    input wire reset,
-    input wire valid_in,
-    input wire [SAMPLE_WIDTH-1:0] data_in, 
-    output reg valid_out,
-    output reg[SAMPLE_WIDTH-1:0] data_out
+    input logic clk,
+    input logic reset,
+    input logic valid_in,
+    input logic [SAMPLE_WIDTH-1:0] data_in, 
+    output logic valid_out,
+    output logic[SAMPLE_WIDTH-1:0] data_out
 );    
-    input wire [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_1_array[TAPS-1:0];
-    input wire [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_2_array[TAPS-1:0];
-    input wire [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_3_array[TAPS-1:0];
-    input wire [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_4_array[TAPS-1:0];
-    output wire [SAMPLE_WIDTH-1:0] multiply_accumulator_signal_out_array [TAPS-1:0];
+    logic [SAMPLE_WIDTH-1:0] MAC_signal_1 [TAPS-1:0];
+    logic [SAMPLE_WIDTH-1:0] MAC_signal_2 [TAPS-1:0];
+    logic [SAMPLE_WIDTH-1:0] MAC_signal_3 [TAPS-1:0];
+    logic [SAMPLE_WIDTH-1:0] MAC_signal_4 [TAPS-1:0];
+    logic [SAMPLE_WIDTH-1:0] MAC_signal_out [TAPS-1:0];
+    logic [TAPS-1:0] MAC_valid_out;
+    logic [TAPS-1:0] MAC_valid_in;
 
     genvar i 
     generate
         for (int i = 0; i < TAPS; i = i + 1) begin
+            if (i == 0) begin 
+                multiply_accumulator multiply_accumulator_0 (
+                    .clk(clk),
+                    .reset(reset),
+                    .signal_1(MAC_signal_1[0]),
+                    .signal_2(0),
+                    .signal_3(FIR_Coefficients[0]),
+                    .signal_4(0),
+                    .valid_out(valid_out_mul),
+                    .data_out(multiply_accumulator_signal_out_array[i])
+                );
+            end 
             multiply_accumulator multiply_accumulator_0 (
                 .clk(clk),
                 .reset(reset),
-                .signal_1(multiply_accumulator_signal_1_array[i]),
-                .signal_2(multiply_accumulator_signal_2_array[i]),
-                .signal_3(multiply_accumulator_signal_3_array[i]),
-                .signal_4(multiply_accumulator_signal_4_array[i]),
+                .signal_1(MAC_signal_1[i]),
+                .signal_2(0),
+                .signal_3(FIR_Coefficients[i]),
+                .signal_4(MAC_signal_out[i-1]),
                 .valid_out(valid_out_mul),
-                .data_out(multiply_accumulator_signal_out_array[i])
+                .data_out(MAC_signal_out[i])
             );
         end
     endgenerate 
 
-    reg [SAMPLE_WIDTH-1:0] sample_buffer[N-1:0];
-    state {waiting, setup, ready} state; 
+    logic [N-1:0] [SAMPLE_WIDTH-1:0] sample_buffer;
 
     always_ff @(posedge clk) begin
         if (reset) begin 
@@ -52,26 +65,10 @@ module polyphase_halfband_fir #(
             valid_out <= 0;
             state <= setup;
         end else if (valid_in) begin
-            for (i = N-1; i > 0; i = i - 1) begin
-                sample_buffer[i] <= sample_buffer[i-1];
-            end
-            sample_buffer[0] <= data_in;
+            sample_buffer <= {sample_buffer[N-2:0], data_in};
             sample_count <= sample_count + 1;
-            if (state == waiting) begin 
-                if (sample_buffer >= TAPS) begin 
-                    state <= setup;
-                end 
-            end else if (state == setup) begin 
-                multiply_accumulator_signal_1[sample_count] <= sample_buffer[0]; 
-                multiply_accumulator_signal_3[sample_count] <= FIR_Coefficients[sample_count - 1];
-                multiply_accumulator_signal_4[sample_count] <= multiply_accumulator_signal_out_array[sample_count - 2];
-                valid_out <= 0;
-                data_out <= 0;
-            end else if (state == ready) begin
-                data_out <= multiply_accumulator_signal_out_array[TAPS-1];
-                valid_out <= 1;
-                state <= waiting;
-            end
+            if (sample_count > TAPS) begin 
+                
         end 
     end
 

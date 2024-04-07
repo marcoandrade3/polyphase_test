@@ -8,6 +8,7 @@ module multiply_accumulator #(
 )(    
     input wire clk,
     input wire reset,
+    input wire valid_in,
     input wire[SAMPLE_WIDTH-1:0] signal_1,
     input wire[SAMPLE_WIDTH-1:0] signal_2,
     input wire[SAMPLE_WIDTH-1:0] signal_3,
