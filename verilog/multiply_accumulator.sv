@@ -6,15 +6,15 @@ module multiply_accumulator #(
     parameter integer N = 31, 
     parameter integer M = 2
 )(    
-    input wire clk,
-    input wire reset,
-    input wire valid_in,
-    input wire[SAMPLE_WIDTH-1:0] signal_1,
-    input wire[SAMPLE_WIDTH-1:0] signal_2,
-    input wire[SAMPLE_WIDTH-1:0] signal_3,
-    input wire[SAMPLE_WIDTH-1:0] signal_4,
-    output reg valid_out,
-    output reg[SAMPLE_WIDTH-1:0] data_out
+    input logic clk,
+    input logic reset,
+    input logic valid_in,
+    input logic[SAMPLE_WIDTH-1:0] signal_1,
+    input logic[SAMPLE_WIDTH-1:0] signal_2,
+    input logic[SAMPLE_WIDTH-1:0] signal_3,
+    input logic[SAMPLE_WIDTH-1:0] signal_4,
+    output logic valid_out,
+    output logic[SAMPLE_WIDTH-1:0] data_out
 );  
     // generate, graph with integer and one with fixed point to compare frequency response 
     enum {IDLE, FIRST_ADDER, MULTIPLIER, SECOND_ADDER} state;
